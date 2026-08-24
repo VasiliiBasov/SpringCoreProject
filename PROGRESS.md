@@ -44,14 +44,16 @@
 |   | Singleton scope                   | 🟢 90%   | "когда есть только один объект"                        |
 |   | Prototype / request / session     | 🟡 70%   | помнит 4 scope, путает request с session               |
 |   | Scope вообще как концепция        | 🟢 85%   | помнит 4 scope, singleton по умолчанию                 |
+| ! | Несколько конструкторов в бине    | 🔴 30%   | "возьмёт первый по порядку" — неверно, нужен @Autowired |
 | ! | Жизненный цикл бина               | 🟡 70%   | перепутал порядок B-PostConstruct-A                    |
-| ! | DI: 3 способа                     | 🟢 85%   | "Spring сам подставляет зависимости, бин не создаёт сам" — точное определение, потренировать в шаге 3 |
+| ! | DI: 3 способа                     | 🟢 90%   | "Spring сам подставляет зависимости" + 3 способа + prototype/singleton изолированы |
 |   | `@Value` с default и без          | 🟢 85%   | "упадёт с ошибкой, если нет ни в properties, ни в @Value" |
+| ! | `@Value` + SpEL для примитивов    | 🟡 50%   | помнит properties, но не назвал @Value и SpEL (`#{}`)  |
 | ! | Lazy initialization               | 🔴 10%   | не разбирали                                           |
 | ! | `ApplicationContext` как набор интерфейсов | 🔴 10% | не разбирали                                    |
 
-**Средний балл:** ~67%
-**Приоритеты на подтяжку:** BeanFactory/Context (!) → Lifecycle (!) → Lazy (!) → ApplicationContext internals (!) → DI (потренировать на практике в шаге 3)
+**Средний балл:** ~62%
+**Приоритеты на подтяжку:** Несколько конструкторов (!) → @Value/SpEL (!) → BeanFactory/Context (!) → Lifecycle (!) → Lazy (!) → ApplicationContext internals (!)
 
 **Цель:** к шагу 12 — 80%+ по всем темам.
 
