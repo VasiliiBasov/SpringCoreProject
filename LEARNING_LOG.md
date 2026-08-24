@@ -209,15 +209,96 @@ com.vasilii.notificationhub/
 
 ---
 
+## 🎓 Глубокое погружение: основы (после шага 2)
+
+### Зачем Spring — на нашем проекте
+
+**Без Spring** в `main` пришлось бы писать:
+- `Properties props = loadProps(...)` — загрузить настройки
+- `EmailChannel email = new EmailChannel(smtpHost)` — создать канал
+- `Map<ChannelType, NotificationChannel> channels = Map.of(EMAIL, email)` — собрать карту
+- `NotificationService service = new NotificationService(channels)` — собрать сервис
+- И так для **каждого** нового канала — лезть в `main`, дописывать
+
+**Со Spring** (после шага 5):
+- Добавил класс `WebhookChannel` с аннотацией `@Component` — и всё. **Spring сам** нашёл, создал, положил в контейнер. `AppConfig` не трогаем.
+
+**Главная ценность Spring:** изменение поведения через **настройки и аннотации**, а не через правку кода.
+
+### Жизненный цикл бина (полный порядок)
+
+```
+new AnnotationConfigApplicationContext(AppConfig.class)
+   ↓
+[1] Spring читает AppConfig, создаёт BeanDefinition
+   ↓
+[2] Регистрирует BeanPostProcessor-ы
+   ↓
+[3] ★ Первый getBean("emailChannel") ★
+   ↓
+[4] Создаёт объект: new EmailChannel(smtpHost)  ← КОНСТРУКТОР
+   ↓
+[5] Внедряет зависимости: @Autowired, @Value
+   ↓
+[6] BeanPostProcessor.postProcessBeforeInitialization()
+   ↓
+[7] @PostConstruct / InitializingBean.afterPropertiesSet()
+   ↓
+[8] BeanPostProcessor.postProcessAfterInitialization()
+   ↓
+[9] Бин готов, кладётся в кэш
+   ↓
+[10] Второй getBean → отдаёт из кэша (конструктор НЕ вызывается)
+   ↓
+... работа ...
+   ↓
+ctx.close()
+   ↓
+[11] @PreDestroy / DisposableBean.destroy()
+```
+
+### Scope-ы
+
+| Scope | Экземпляров | Создаётся | Умирает |
+|---|---|---|---|
+| singleton (default) | 1 | при первом getBean | при ctx.close() |
+| prototype | новый каждый раз | при каждом getBean | **никогда** (@PreDestroy НЕ зовётся!) |
+| request | 1 на HTTP-запрос | на старте запроса | в конце запроса |
+| session | 1 на HTTP-сессию | на старте сессии | при уничтожении сессии |
+
+### DI: 3 способа внедрения
+
+| Способ | Плюсы | Минусы |
+|---|---|---|
+| Constructor (✅ best) | final поля, видно в сигнатуре, легко тестить | много параметров = громоздко |
+| Setter | для опциональных зависимостей | можно забыть вызвать |
+| Field (`@Autowired` на поле) | минимум кода | нельзя final, нужен контекст для создания |
+
+### Что внутри ApplicationContext
+
+ApplicationContext — это **один объект**, который реализует сразу несколько интерфейсов:
+- `ListableBeanFactory` → `getBeansOfType()`, `getBeanNamesForType()`
+- `ApplicationEventPublisher` → `ctx.publishEvent(...)` (шаг 7)
+- `Environment` → `ctx.getEnvironment().getProperty(...)` (шаг 8)
+- `MessageSource` → `ctx.getMessage(...)` (i18n)
+- `ResourcePatternResolver` → загрузка ресурсов
+
+---
+
 ## 🧠 Копилка фактов (то, что точно спросят на собесе)
 
 | Вопрос | Ответ |
 |--------|-------|
+| Зачем нужен Spring? | Чтобы не создавать объекты вручную: контейнер сам создаёт, связывает, настраивает. Меняем поведение через настройки, не через код |
 | Чем `BeanFactory` отличается от `ApplicationContext`? | `ApplicationContext` = `BeanFactory` + события + i18n + авто-регистрация `BeanPostProcessor` |
-| Откуда Spring берёт имя бина, объявленного через `@Bean`? | По умолчанию — из имени метода |
-| Что такое singleton scope? | Один экземпляр на весь контекст (по умолчанию) |
+| Что такое бин? | Объект, управляемый контейнером Spring |
+| `@Configuration` vs `@ComponentScan`? | `@Configuration` — маркер класса с `@Bean`-методами. `@ComponentScan` — указывает пакет для поиска `@Component` |
+| `@Component` vs `@Bean`? | `@Component` на классе, `@Bean` на методе. Первое для своих классов, второе для чужих |
+| Singleton scope? | Один экземпляр на весь контекст (по умолчанию) |
 | Как задать scope prototype? | `@Scope("prototype")` на `@Bean` или `@Component` |
-| Что делает `@Value("${key:default}")`? | Подставляет значение из properties, если нет — default |
+| Что делает `@Value("${key:default}")`? | Подставляет значение из properties, если нет — default. Без `:` упадёт при старте |
+| Порядок жизненного цикла? | конструктор → @Autowired → BeanPostProcessor.before → @PostConstruct → BeanPostProcessor.after |
+| Какой DI лучше? | Constructor injection — final, видно в сигнатуре, легко тестить |
 
 ---
 
