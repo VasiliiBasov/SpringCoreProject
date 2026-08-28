@@ -2,8 +2,12 @@ package com.vasilii.notificationhub;
 
 import com.vasilii.notificationhub.api.ChannelType;
 import com.vasilii.notificationhub.api.NotificationChannel;
+import com.vasilii.notificationhub.channel.EmailConfig;
+import com.vasilii.notificationhub.channel.EmailProperties;
 import org.springframework.context.ConfigurableApplicationContext;
 import org.springframework.context.annotation.AnnotationConfigApplicationContext;
+
+import java.util.Map;
 
 public class App {
     public static void main(String[] args) {
@@ -31,8 +35,28 @@ public class App {
                 System.out.println("  - " + name);
             }
 
+            NotificationChannel sms = ctx.getBean("smsChannel", NotificationChannel.class);
+            System.out.println("Бин: " + sms);
+
+            Map<String, NotificationChannel> all = ctx.getBeansOfType(NotificationChannel.class);
+
+            System.out.println("=== Все каналы через getBeansOfType: " + all.size() + " ===");
+            all.forEach((name, ch) -> System.out.println(" " + name + " -> " + ch.getType()));
+
             // Спросим у BeanFactory, сколько вообще бинов зарегистрировано
             System.out.println("Всего бинов: " + ctx.getBeanDefinitionCount());
+
+            EmailConfig cfg = ctx.getBean(EmailConfig.class);
+            System.out.println("retryAttempts: " + cfg.getRetryAttempts());
+            System.out.println("MillisecondsInMinute: " + cfg.getMillisecondsInMinute());
+            System.out.println("isLocal: " + cfg.isLocal());
+
+            EmailProperties props = ctx.getBean(EmailProperties.class);
+            System.out.println("smtpHost (props): " + props.getSmtpHost());
+            System.out.println("smtpPort (props): " + props.getSmtpPort());
+            System.out.println("retryAttempts (props): " + props.getRetryAttempts());
+
+
 
             System.out.println("=== Контекст закрыт ===");
         }
